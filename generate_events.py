@@ -1,10 +1,11 @@
 import random
 from datetime import datetime, timedelta, timezone
 
-import requests
-
+import requests 
+import time
 
 API_URL = "http://127.0.0.1:8000/events"
+
 
 MERCHANTS = [
     "merchant-001",
@@ -122,12 +123,24 @@ def send_payment_events(number_of_events):
     print(f"Failed requests: {failed_requests}")
 
 
+
+
 if __name__ == "__main__":
-    number_of_events = random.randint(100, 300)
+    print("Automatic payment event generator started")
+    print("Press Control + C to stop")
 
-    print(
-        f"Generating {number_of_events} payment events "
-        "across the previous 7 days..."
-    )
+    while True:
+        number_of_events = random.randint(5, 25)
 
-    send_payment_events(number_of_events)
+        print()
+        print(f"Generating {number_of_events} payment events...")
+        send_payment_events(number_of_events)
+
+        wait_seconds = random.randint(30, 120)
+
+        print(
+            f"Waiting {wait_seconds} seconds "
+            "before the next batch..."
+        )
+
+        time.sleep(wait_seconds)
