@@ -186,7 +186,97 @@ def get_processor_metrics(period: str = "all_time"):
 
     connection.close()
 
+    return [dict(row) for row in rows] 
+def get_merchant_metrics(period: str = "all_time"):
+    start_time, end_time = get_period_boundaries(period)
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    connection.row_factory = sqlite3.Row
+
+    query = """
+        SELECT
+            merchant_id,
+            COUNT(*) AS total_transactions,
+
+            SUM(
+                CASE WHEN status = 'approved' THEN 1 ELSE 0 END
+            ) AS approved_transactions,
+
+            SUM(
+                CASE WHEN status = 'declined' THEN 1 ELSE 0 END
+            ) AS declined_transactions,
+
+            SUM(
+                CASE WHEN status = 'error' THEN 1 ELSE 0 END
+            ) AS error_transactions,
+
+            ROUND(
+                100.0 * SUM(
+                    CASE WHEN status = 'approved' THEN 1 ELSE 0 END
+                ) / COUNT(*),
+                2
+            ) AS approval_rate,
+
+            ROUND(
+                100.0 * SUM(
+                    CASE WHEN status = 'declined' THEN 1 ELSE 0 END
+                ) / COUNT(*),
+                2
+            ) AS decline_rate,
+
+            ROUND(
+                100.0 * SUM(
+                    CASE WHEN status = 'error' THEN 1 ELSE 0 END
+                ) / COUNT(*),
+                2
+            ) AS error_rate,
+
+            ROUND(SUM(amount), 2) AS payment_volume,
+
+            ROUND(
+                SUM(
+                    CASE
+                        WHEN status IN ('declined', 'error')
+                        THEN amount
+                        ELSE 0
+                    END
+                ),
+                2
+            ) AS failed_payment_value,
+
+            ROUND(
+                SUM(
+                    CASE
+                        WHEN status IN ('declined', 'error')
+                        THEN amount
+                        ELSE 0
+                    END
+                ),
+                2
+            ) AS revenue_at_risk
+
+        FROM payment_events
+    """
+
+    parameters = ()
+
+    if start_time is not None and end_time is not None:
+        query += """
+            WHERE occurred_at >= ?
+            AND occurred_at < ?
+        """
+        parameters = (start_time, end_time)
+
+    query += """
+        GROUP BY merchant_id
+        ORDER BY revenue_at_risk DESC, merchant_id
+    """
+
+    rows = connection.execute(query, parameters).fetchall()
+    connection.close()
+
     return [dict(row) for row in rows]
+
 
 def get_terminal_metrics(minutes: int = 15):
     cutoff_time = datetime.now(timezone.utc) - timedelta(
