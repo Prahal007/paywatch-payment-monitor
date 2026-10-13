@@ -12,6 +12,7 @@ from app.database import (
     get_terminal_metrics,
     get_transaction_trends,
     get_revenue_risk,
+    get_merchant_metrics,
 )
 from app.incident_service import detect_incidents
 
@@ -109,4 +110,15 @@ def read_incidents():
     return {
         "total_incidents": len(incidents),
         "incidents": incidents,
+    }
+@app.get("/metrics/merchants")
+def read_merchant_metrics(
+    period: Period = "7_days",
+):
+    merchants = get_merchant_metrics(period=period)
+
+    return {
+        "period": period,
+        "total_merchants": len(merchants),
+        "merchants": merchants,
     }

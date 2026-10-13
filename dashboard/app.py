@@ -255,6 +255,9 @@ revenue_risk_data = get_api_data(
 processor_data = get_api_data(
     f"/metrics/processors?period={selected_period}"
 )
+merchant_data = get_api_data(
+    f"/metrics/merchants?period={selected_period}"
+)
 
 incident_data = get_api_data("/incidents")
 
@@ -677,6 +680,108 @@ if processor_data and processor_data.get("processors"):
 else:
     st.info("No processor performance data is available.")
 
+# ---------- Merchant impact ----------
+
+# ---------- Merchant impact ----------
+
+st.markdown(
+    '<div class="section-label">Merchant Impact</div>',
+    unsafe_allow_html=True,
+)
+
+if merchant_data and merchant_data.get("merchants"):
+    merchant_dataframe = pd.DataFrame(
+        merchant_data["merchants"]
+    )
+
+    merchant_dataframe["revenue_at_risk"] = (
+        merchant_dataframe["revenue_at_risk"].fillna(0)
+    )
+
+    total_revenue_at_risk = merchant_dataframe[
+        "revenue_at_risk"
+    ].sum()
+
+    affected_merchants = (
+        merchant_dataframe["revenue_at_risk"] > 0
+    ).sum()
+
+    merchant_dataframe = merchant_dataframe.sort_values(
+        "revenue_at_risk",
+        ascending=False,
+    )
+
+    highest_risk_row = merchant_dataframe.iloc[0]
+
+    impact_column1, impact_column2, impact_column3 = st.columns(3)
+
+    impact_column1.metric(
+        "Revenue at Risk",
+        f"${total_revenue_at_risk:,.2f}",
+    )
+
+    impact_column2.metric(
+        "Affected Merchants",
+        int(affected_merchants),
+    )
+
+    impact_column3.metric(
+        "Highest-Risk Merchant",
+        highest_risk_row["merchant_id"],
+        f"${highest_risk_row['revenue_at_risk']:,.2f} at risk",
+        delta_color="inverse",
+    )
+
+    st.dataframe(
+        merchant_dataframe[
+            [
+                "merchant_id",
+                "total_transactions",
+                "approval_rate",
+                "decline_rate",
+                "error_rate",
+                "payment_volume",
+                "failed_payment_value",
+                "revenue_at_risk",
+            ]
+        ],
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "merchant_id": "Merchant",
+            "total_transactions": "Transactions",
+            "approval_rate": st.column_config.NumberColumn(
+                "Approval Rate",
+                format="%.2f%%",
+            ),
+            "decline_rate": st.column_config.NumberColumn(
+                "Decline Rate",
+                format="%.2f%%",
+            ),
+            "error_rate": st.column_config.NumberColumn(
+                "Error Rate",
+                format="%.2f%%",
+            ),
+            "payment_volume": st.column_config.NumberColumn(
+                "Payment Volume",
+                format="$%.2f",
+            ),
+            "failed_payment_value": st.column_config.NumberColumn(
+                "Failed Payment Value",
+                format="$%.2f",
+            ),
+            "revenue_at_risk": st.column_config.NumberColumn(
+                "Revenue at Risk",
+                format="$%.2f",
+            ),
+        },
+    )
+
+else:
+    st.info(
+        f"No merchant activity is available for "
+        f"{selected_period_label}."
+    )
 
 # ---------- Incidents ----------
 
